@@ -3,6 +3,9 @@
 //  Created by Márcio Sarroglia Pinho on 22/09/20.
 //
 #include "InstanciaBZ.h"
+#include <math.h>
+
+#define ROTATION_OFFSET -90
 
 // ***********************************************************
 //  void InstanciaPonto(Ponto3D *p, Ponto3D *out)
@@ -47,10 +50,14 @@ InstanciaBZ::InstanciaBZ()
     
     n_curva = 0;
     prox_curva = -1;
+    prox_ponto = -1;
     t_atual = 0.0;
     direcao = 1;
+    cor = 0;
+    vivo = true;
+    dash = false;
 
-    velocidade = 1;
+    velocidade = 2;
 }
 InstanciaBZ::InstanciaBZ(Bezier _curva)
 {
@@ -59,15 +66,19 @@ InstanciaBZ::InstanciaBZ(Bezier _curva)
     escala = Ponto(1,1,1);
 
     n_curva = 0;
-    prox_curva = -1;    
+    prox_curva = -1;
+    prox_ponto = -1;
     curva = _curva;
     t_atual = 0;
     direcao = 1;
+    cor = 0;
+    vivo = true;
+    dash = false;
 
-    velocidade = 1;
+    velocidade = 2;
 }
 
-InstanciaBZ::InstanciaBZ(Bezier _curva, int _n_curva, int _direcao)
+InstanciaBZ::InstanciaBZ(Bezier _curva, int _n_curva, int _direcao, int _cor)
 {
     rotacao = 0;
     
@@ -75,15 +86,18 @@ InstanciaBZ::InstanciaBZ(Bezier _curva, int _n_curva, int _direcao)
     
     n_curva = _n_curva;
     prox_curva = -1;
+    prox_ponto = -1;
     curva = _curva;
+    cor = _cor;
+    vivo = true;
+    dash = false;
 
     posicao = _curva.getPC(((_direcao == 1)?0:2)); // Pega ponto inicial ou final da curva dependendo da direção
 
     direcao = _direcao;
     t_atual = ((direcao == 1)?0:1); // t_atual depende de onde está na curva
 
-    velocidade = 1;
-    cor = rand() % 94;
+    velocidade = 2;
 }
 
 void InstanciaBZ::CalculaNovaCurva(Bezier nova_curva)
@@ -98,12 +112,14 @@ void InstanciaBZ::CalculaNovaCurva(Bezier nova_curva)
     curva = nova_curva;
     n_curva = prox_curva;
     prox_curva = -1;
+    prox_ponto = -1;
 }
 
 void InstanciaBZ::MudaDirecao()
 {
     direcao *= -1;
     prox_curva = -1;
+    prox_ponto = -1;
 }
 
 void InstanciaBZ::desenha()
@@ -141,5 +157,8 @@ void InstanciaBZ::AtualizaPosicao(float tempoDecorrido)
     posicao = curva.Calcula(t_atual);
 
     // Logica de Rotacao
+    Ponto posicao2 = curva.Calcula(t_atual +(0.01 * ((direcao ==1)?1:-1)));
+    Ponto vetor = posicao2 - posicao;
     
+    rotacao = (atan2(vetor.y, vetor.x)*180/M_PI) + ROTATION_OFFSET;
 }

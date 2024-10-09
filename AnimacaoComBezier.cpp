@@ -44,8 +44,11 @@
 #include "ListaDeCoresRGB.h"
 
 void AssociaPersonagemComCurva(int p, int c);
-
 void EncontraProxCurva(int i, int direcao);
+bool operator<(Bezier a, Bezier b);
+int IndexCurvaDoPonto();
+void MudaCurvaDireita();
+void MudaCurvaEsquerda();
 
 typedef struct Intersec
 {
@@ -59,9 +62,17 @@ typedef struct Intersec
     
 } Intersec;
 
+bool game_over = false;
+float dash_countdown_max = 150;
+float dash_countdown = dash_countdown_max;
+
 Temporizador T;
 double AccumDeltaT = 0;
 Temporizador T2;
+
+float tempo_antigo {};
+float tempo {};
+float diferenca_tempo {};
 
 std::vector<InstanciaBZ> personagens;
 std::vector<Bezier> curvas;
@@ -104,27 +115,71 @@ void animate()
         TempoTotal = 0;
         nFrames = 0;
     }
+    
+    tempo = (float)glutGet(GLUT_ELAPSED_TIME);
+    diferenca_tempo = (tempo - tempo_antigo);
+    tempo_antigo = tempo;
+
+    if (personagens[0].dash)
+    {
+        if (dash_countdown <= 0)
+        {
+            personagens[0].dash = false;
+            personagens[0].velocidade = 2;
+        }
+        else
+        {
+            dash_countdown -= 0.1*diferenca_tempo;
+            personagens[0].velocidade = 25;
+        }        
+    }
+    else
+    {
+        if (dash_countdown >= dash_countdown_max)
+        {
+            dash_countdown = dash_countdown_max;
+        }
+        else
+        {
+            dash_countdown += 0.05*diferenca_tempo;
+        }
+    }
 
     // Logica Personagens
     for (int i = 0; i < personagens.size(); i++)
     {
+        if (!personagens[i].vivo)
+        {
+            continue;
+        }
+        // Encontra nova curva no próximo ponto
         if (personagens[i].prox_curva == -1)
         {
             EncontraProxCurva(i, personagens[i].direcao);
         }
 
+        // Calcula troca para nova curva após sair de uma
         if ((personagens[i].t_atual > 1 && personagens[i].direcao == 1)
             || (personagens[i].t_atual < 0 && personagens[i].direcao == -1))
         {
             personagens[i].CalculaNovaCurva(curvas[personagens[i].prox_curva]);
         }
 
-        // if (i != 0)
+        // Logica de colisão (mesma curva)
         if ((i != 0) && (personagens[0].n_curva == personagens[i].n_curva))
         {
             if (calculaDistancia(personagens[0].posicao, personagens[i].posicao) < 0.5)
             {
-                std::cout << "GAME OVER" << std::endl;
+                if (personagens[0].dash)
+                {
+                    personagens[i].vivo = false;
+                }
+                else
+                {
+                    personagens[0].vivo = false;
+                    // std::cout << "GAME OVER" << std::endl;
+                    game_over = true;
+                }                
             }
         }
     }
@@ -172,63 +227,34 @@ void DesenhaTriangulo()
 // **********************************************************************
 void CriaInstancias()
 {
-    // int n_curva = (rand() % 4);
-    // std::cout << "Player: " << n_curva << std::endl;
-    // personagens.emplace_back(curvas[n_curva], n_curva, (rand() % 2)?-1:1);
-    // personagens[0].modelo = DesenhaPersonagem;
-    // for (size_t i = 1; i <= 10; i++)
-    // {
-    //     // while (n_curva == personagens[0].n_curva)
-    //     {
-    //         n_curva = rand() % (pontosIntersec.size()-4)+4;
-    //         std::cout << "Inimigo " << i << ": " << n_curva << std::endl;
-    //     }
-    //     personagens.emplace_back(curvas[n_curva], n_curva, (rand() % 2)?-1:1);
-    //     personagens[i].modelo = DesenhaTriangulo;
-
-    //     // std::cout << "personagem " << i
-    //     //           << " Direção: " << personagens[i].direcao
-    //     //           << " - Curva: " << personagens[i].n_curva
-    //     //           << " ProxCurva: " << personagens[i].prox_curva
-    //     //           << " posicao: " << personagens[i].posicao.x << " " << personagens[i].posicao.y
-    //     //           << " t_atual: " << personagens[i].t_atual
-    //     //           << " ponto inicial: " << personagens[i].curva.pontoInicial
-    //     //           << " ponto final: " << personagens[i].curva.pontoFinal << std::endl;
-
-    // }
-
     int n_ponto = (rand() % 4);
     int n_curva = -1;
-    int direcao = 0;
+    int direcao {};
+    int cor {};
     Ponto ponto_curva {};
 
-    std::cout << "Player: " << n_ponto << std::endl;
     ponto_curva = pontosIntersec[n_ponto].ponto;
     n_curva = pontosIntersec[n_ponto].curvas[rand() % pontosIntersec[n_ponto].curvas.size()];
     direcao = (pontosIntersec[curvas[n_curva].pontoInicial].ponto == ponto_curva)? 1 : -1;
+    cor = YellowGreen;
 
-    personagens.emplace_back(curvas[n_curva], n_curva, direcao);
+    personagens.emplace_back(curvas[n_curva], n_curva, direcao, cor);
     personagens[0].modelo = DesenhaPersonagem;
-    for (size_t i = 1; i <= 10; i++)
+    for (size_t i = 1; i <= 11; i++)
     {
-        // while (n_curva == personagens[0].n_curva)
         n_ponto = (rand() % (pontosIntersec.size()-4)+4);
         ponto_curva = pontosIntersec[n_ponto].ponto;
         n_curva = pontosIntersec[n_ponto].curvas[rand() % pontosIntersec[n_ponto].curvas.size()];
         direcao = (pontosIntersec[curvas[n_curva].pontoInicial].ponto == ponto_curva)? 1 : -1;
-        std::cout << "Inimigo " << i << ": " << n_ponto << std::endl;
-        personagens.emplace_back(curvas[n_curva], n_curva, direcao);
+        
+        do
+        {
+            cor = rand() % 94;
+        }
+        while (cor == CadetBlue || cor == YellowGreen || cor == OrangeRed, cor == White);
+
+        personagens.emplace_back(curvas[n_curva], n_curva, direcao, cor);
         personagens[i].modelo = DesenhaTriangulo;
-
-        // std::cout << "personagem " << i
-        //           << " Direção: " << personagens[i].direcao
-        //           << " - Curva: " << personagens[i].n_curva
-        //           << " ProxCurva: " << personagens[i].prox_curva
-        //           << " posicao: " << personagens[i].posicao.x << " " << personagens[i].posicao.y
-        //           << " t_atual: " << personagens[i].t_atual
-        //           << " ponto inicial: " << personagens[i].curva.pontoInicial
-        //           << " ponto final: " << personagens[i].curva.pontoFinal << std::endl;
-
     }
 }
 // **********************************************************************
@@ -237,16 +263,6 @@ void CriaInstancias()
 void CarregaModelos()
 {
     player.LePoligono("Nave.txt");
-    // MeiaSeta.LePoligono("MeiaSeta.txt");
-    // Mastro.LePoligono("Mastro.txt");
-    
-    // Ponto A, B;
-    // Mapa.obtemLimites(A,B);
-    // std::cout << "Limites do Mapa" << std::endl;
-    // A.imprime();
-    // std::cout << std::endl;
-    // B.imprime();
-    // std::cout << std::endl;
 }
 // **********************************************************************
 //  Este metodo deve ser alterado para ler as curvas de um arquivo texto
@@ -260,13 +276,12 @@ void Criacurvas()
     std::vector<std::pair<double, double>> pontosDeControle;
     std::vector<std::array<double, 3>> pontosCurvas;
 
+    // Lê arquivo .txt de vértices
     input.open("PontosDeControle.txt", std::ios::in);
     if (!input)
     {
-        std::cout << "Erro ao abrir PontosDeControle.txt." << std::endl;
         exit(0);
     }
-    std::cout << "Lendo arquivo PontosDeControle.txt..." << std::endl;
     
     input >> qtdPontosControle;
     pontosDeControle.resize(qtdPontosControle);
@@ -282,13 +297,12 @@ void Criacurvas()
     }
     input.close();
 
+    // Lê arquivo .txt de curvas
     input.open("PontosCurvas.txt", std::ios::in);
     if (!input)
     {
-        std::cout << "Erro ao abrir PontosCurvas.txt." << std::endl;
         exit(0);
     }
-    std::cout << "Lendo arquivo PontosCurvas.txt..." << std::endl;
     
     input >> qtdcurvas;
     pontosCurvas.resize(qtdcurvas);
@@ -304,7 +318,7 @@ void Criacurvas()
     }
     input.close();
 
-    // Lógica péssima ARRUMAR
+    // Insere curvas em um arraylist
     for (size_t i = 0; i < qtdcurvas; i++)
     {
         Ponto pontoInicialCurva = Ponto(pontosDeControle[pontosCurvas[i][0]].first, pontosDeControle[pontosCurvas[i][0]].second);
@@ -314,7 +328,7 @@ void Criacurvas()
                             Ponto(pontosDeControle[pontosCurvas[i][1]].first, pontosDeControle[pontosCurvas[i][1]].second),
                             pontoFinalCurva);
         
-
+        // Insere pontos iniciais das curvas em um arraylist de intersecções
         auto it = std::find_if(pontosIntersec.begin(), pontosIntersec.end(), [&pontoInicialCurva](const Intersec& intersec) {
             return intersec.ponto == pontoInicialCurva;
         });
@@ -331,6 +345,7 @@ void Criacurvas()
             }
         }
 
+        // Insere pontos finais das curvas em um arraylist de intersecções
         it = std::find_if(pontosIntersec.begin(), pontosIntersec.end(), [&pontoFinalCurva](const Intersec& intersec) {
             return intersec.ponto == pontoFinalCurva;
         });
@@ -348,10 +363,16 @@ void Criacurvas()
         }
     }
 
+    // Ordena as curvas pelo seu ângulo
+    for (size_t i = 0; i < pontosIntersec.size(); i++)
+    {
+        sort(pontosIntersec[i].curvas.begin(), pontosIntersec[i].curvas.end());
+    }
+
     // Adiciona número dos pontos de intersecções às curvas
     for (size_t i = 0; i < pontosIntersec.size(); i++)
     {
-        pontosIntersec[i].ponto.imprime();
+        // pontosIntersec[i].ponto.imprime();
         for (size_t j = 0; j < pontosIntersec[i].curvas.size(); j++)
         {
             int n_curva = pontosIntersec[i].curvas[j];
@@ -364,24 +385,10 @@ void Criacurvas()
                 curvas[n_curva].pontoFinal = i;
             }
         }
-        std::cout << std::endl;
+        // std::cout << std::endl;
     }
+}
 
-    // Print Debug
-    // for (size_t i = 0; i < curvas.size(); i++)
-    // {
-    //     std::cout << "Curva " << i
-    //               << " - Inicio: " << curvas[i].pontoInicial
-    //               << " Fim: " << curvas[i].pontoFinal << std::endl;
-    // }
-}
-// **********************************************************************
-//
-// **********************************************************************
-void AssociaPersonagemComCurva(int p, int c)
-{
-    personagens[p].curva = curvas[c];
-}
 // **********************************************************************
 //
 // **********************************************************************
@@ -398,28 +405,7 @@ void init()
     Criacurvas();
 
     // cria instancias do modelos
-    CriaInstancias();
-
-    // Debug
-    // for (size_t i = 0; i < curvas.size(); i++)
-    // {
-    //     std::cout << "Curva " << i << " Inicio: " << curvas[i].getPC(0).x << "," << curvas[i].getPC(0).y
-    //     << " | Fim: " << curvas[i].getPC(2).x << "," << curvas[i].getPC(2).y << "| ponto inicial: " << curvas[i].pontoInicial << " ponto final: " << curvas[i].pontoFinal  << std::endl;
-    // }
-    // for (size_t i = 0; i < pontosIntersec.size(); i++)
-    // {
-    //     std::cout << "Ponto Intersec " << i << ": " << pontosIntersec[i].ponto.x << "," << pontosIntersec[i].ponto.y  << " | curvas: ";
-    //     for (size_t j = 0; j < pontosIntersec[i].curvas.size(); j++)
-    //     {
-    //         std::cout << pontosIntersec[i].curvas[j];
-    //         if (j < (pontosIntersec[i].curvas.size() - 1))
-    //         {
-    //             std::cout << ", ";
-    //         }
-    //     }
-    //     std::cout << std::endl;
-    // }   
-    
+    CriaInstancias();    
 
     // define os limites da área de desenho
     float d = 15;
@@ -432,23 +418,27 @@ void DesenhaPersonagens(float tempoDecorrido)
 {
     for (int i = 0; i < personagens.size(); i++)
     {
-        defineCor(personagens[i].cor);
+        if (!personagens[i].vivo)
+        {
+            continue;
+        }
+        if (personagens[i].dash)
+        {
+            defineCor(White);
+            personagens[i].escala = Ponto(1.3,1.3,1.3);
+        }
+        else
+        {
+            defineCor(personagens[i].cor);
+            personagens[i].escala = Ponto(1,1,1);
+        }
+
         personagens[i].AtualizaPosicao(tempoDecorrido);
         personagens[i].desenha();
     }
 }
 
-// void DesenhaPoligonoDeControle(int curva)
-// {
-//     Ponto P;
-//     glBegin(GL_LINE_STRIP);
-//     for (int v=0;v<3;v++)
-//     {
-//         P = curvas[curva].getPC(v);
-//         glVertex2d(P.x, P.y);
-//     }
-//     glEnd();
-// }
+
 // **********************************************************************
 //
 // **********************************************************************
@@ -458,12 +448,7 @@ void DesenhaCurvas()
     glLineWidth(3);
     for (int i = 0; i < curvas.size(); i++)
     {
-        // defineCor(OrangeRed);
-        // glLineWidth(3);
         curvas[i].Traca();
-        // defineCor(VioletRed);
-        // glLineWidth(2);
-        // DesenhaPoligonoDeControle(i);
     }
     defineCor(OrangeRed);
     glLineWidth(4);
@@ -480,12 +465,30 @@ void DesenhaCruzamentos()
     for (int i = 0; i < pontosIntersec.size(); i++)
     {
         glVertex2f(pontosIntersec[i].ponto.x, pontosIntersec[i].ponto.y);
-        // curvas[i].Traca();
-        // defineCor(VioletRed);
-        // glLineWidth(2);
-        // DesenhaPoligonoDeControle(i);
     }
     glEnd();
+}
+
+void DesenhaTextos()
+{
+    if (game_over)
+    {
+        std::string game_over_text = "GAME OVER";
+        defineCor(White);
+        glRasterPos2f(-3, 0);
+        for(char& c : game_over_text)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, c);
+        }
+    }
+
+    std::string dash_text = "DASH: " + std::to_string((int)dash_countdown);
+    defineCor(White);
+    glRasterPos2f(9, -14);
+    for(char& c : dash_text)
+    {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, c);
+    }
 }
 
 // **********************************************************************
@@ -515,6 +518,8 @@ void display(void)
     
     // Desenha os personagens no tempo T2.getDeltaT()
     DesenhaPersonagens(T2.getDeltaT());
+
+    DesenhaTextos();
 
     glutSwapBuffers();
 }
@@ -552,12 +557,22 @@ void keyboard(unsigned char key, int x, int y)
     case 27:     // Termina o programa qdo
         exit(0); // a tecla ESC for pressionada
         break;
-    case 't':
-        ContaTempo(3);
+    case 32:
+        if (personagens[0].velocidade > 0)
+        {
+            personagens[0].velocidade = 0;
+        }
+        else
+        {
+            personagens[0].velocidade = 2;
+        }
         break;
-    case ' ':
-        desenha = !desenha;
-        break;
+    // case 'r':
+    // {
+    //     init();
+    //     break;
+    // }
+    
     default:
         break;
     }
@@ -571,33 +586,20 @@ void arrow_keys(int a_keys, int x, int y)
     switch (a_keys)
     {
     case GLUT_KEY_LEFT:
-        personagens[0].posicao.x -= 0.5;
+        MudaCurvaEsquerda();
         break;
     case GLUT_KEY_RIGHT:
-        personagens[0].rotacao++;
+        MudaCurvaDireita();
         break;
     case GLUT_KEY_UP:
-        if (personagens[0].velocidade > 0)
+        if (dash_countdown >= dash_countdown_max)
         {
-            personagens[0].velocidade = 0;
+            personagens[0].dash = true;
         }
-        else
-        {
-            personagens[0].velocidade = 1;
-        }
-        // glutFullScreen(); // Vai para Full Screen
         break;
     case GLUT_KEY_DOWN:
         personagens[0].MudaDirecao();
-        // glutPositionWindow(50, 50);
-        // glutReshapeWindow(700, 500);
         break;
-    case 'r':
-    {
-        std::cout << "Dsadadsadsadsa";
-        init();
-        break;
-    }
     default:
         break;
     }
@@ -607,16 +609,100 @@ void EncontraProxCurva(int i, int direcao)
 {
     int temp {};
     int i_ponto = (personagens[i].direcao == 1)? personagens[i].curva.pontoFinal : personagens[i].curva.pontoInicial;
-    std::cout << i_ponto << std::endl;
     int i_curva = rand() % (pontosIntersec[i_ponto].curvas.size());
     while((temp = pontosIntersec[i_ponto].curvas[i_curva]) == personagens[i].n_curva)
     {
         i_curva = rand() % (pontosIntersec[i_ponto].curvas.size());
     };
-    // std::cout << "TEMP: " << temp << " Curva " << pontosIntersec[i_ponto].curvas[i_curva] << " = " << personagens[i].n_curva << "?"<< std::endl;
 
     personagens[i].prox_curva = temp;
-    // std::cout << "Nova Curva - Ponto: " << i_ponto << " " << "Curva: " << pontosIntersec[i_ponto].curvas[i_curva] << " " << curvas[i_curva].getPC(0).x << " " << curvas[i_curva].getPC(0).y << std::endl;
+    personagens[i].prox_ponto = i_ponto;
+}
+
+int IndexCurvaDoPonto()
+{
+        int prox_curva = personagens[0].prox_curva;
+        int i_ponto = personagens[0].prox_ponto;
+        return std::find(pontosIntersec[i_ponto].curvas.begin(), pontosIntersec[i_ponto].curvas.end(), prox_curva) - pontosIntersec[i_ponto].curvas.begin();
+}
+
+void MudaCurvaDireita()
+{
+    int i_curva = IndexCurvaDoPonto();
+    
+    while (true)
+    {
+        i_curva++;
+        if (i_curva > pontosIntersec[personagens[0].prox_ponto].curvas.size()-1)
+        {
+            i_curva = 0;
+        }
+        if (pontosIntersec[personagens[0].prox_ponto].curvas[i_curva] == personagens[0].n_curva)
+        {
+            continue;
+        }
+        personagens[0].prox_curva = pontosIntersec[personagens[0].prox_ponto].curvas[i_curva];
+        break;
+    }
+    
+}
+void MudaCurvaEsquerda()
+{
+    int i_curva = IndexCurvaDoPonto();
+
+    while (true)
+    {
+        i_curva--;
+        if (i_curva < 0)
+        {
+            i_curva = pontosIntersec[personagens[0].prox_ponto].curvas.size()-1;
+        }
+        if (pontosIntersec[personagens[0].prox_ponto].curvas[i_curva] == personagens[0].n_curva)
+        {
+            continue;
+        }
+        personagens[0].prox_curva = pontosIntersec[personagens[0].prox_ponto].curvas[i_curva];
+        break;
+    }
+}
+
+bool operator<(Bezier a, Bezier b)
+{
+    Ponto p_a;
+    Ponto p_b;
+    float t_a {};
+    float t_b {};
+    Ponto pos_a;
+    Ponto pos_b;
+    bool result;
+
+    if (a.getPC(0) == b.getPC(0) || a.getPC(0) == b.getPC(2))
+    {
+        p_a = a.getPC(0);
+        t_a = 1;
+    }
+    else
+    {
+        p_a = b.getPC(2);
+        t_a = 0;
+    }
+
+    if (p_a == b.getPC(0))
+    {
+        p_b = b.getPC(0);
+        t_b = 1;
+    }
+    else
+    {
+        p_b = b.getPC(2);
+        t_b = 0;
+    }
+
+    pos_a = a.Calcula(t_a +(0.01 * ((t_a == 0)?1:-1)));
+    pos_b = b.Calcula(t_b +(0.01 * ((t_b == 0)?1:-1)));
+    result = (atan2(pos_a.y, pos_a.x)*180/M_PI) < (atan2(pos_b.y, pos_b.x)*180/M_PI);
+
+    return result;
 }
 
 // **********************************************************************

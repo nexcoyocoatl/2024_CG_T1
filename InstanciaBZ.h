@@ -21,7 +21,7 @@ class InstanciaBZ
 public:
     InstanciaBZ();
     InstanciaBZ(Bezier _curva);
-    InstanciaBZ(Bezier _curva, int _n_curva, int _direcao);
+    InstanciaBZ(Bezier _curva, int _n_curva, int _direcao, int _cor);
     
     TipoFuncao *modelo; // Modelo a ser desenhado
 
@@ -29,8 +29,12 @@ public:
     Ponto posicao, escala;
     float rotacao;
 
+    bool vivo;
+    bool dash;
+
     int n_curva;
     int prox_curva;
+    int prox_ponto;
     int cor;
     float velocidade;
     float t_atual;
