@@ -499,6 +499,13 @@ void DesenhaTextos()
         {
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, c);
         }
+
+        glRasterPos2f(-4, -1.2);        
+        game_over_text = "Pressione R para reiniciar";
+        for(char& c : game_over_text)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
+        }
     }
 
     std::string dash_text = "DASH: " + std::to_string((int)dash_countdown) + "%";
