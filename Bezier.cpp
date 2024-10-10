@@ -12,7 +12,6 @@ Bezier::Bezier()
         Coords[i] = Ponto(0,0,0);
     ComprimentoTotalDaCurva = 0;
     cor = rand() % 100;
-    //std::cout << "Cor: " << cor << std::endl;
 }
 // **********************************************************************
 //
@@ -86,13 +85,11 @@ void Bezier::Traca()
     double t=0.0;
     double DeltaT = 1.0/50;
     Ponto P;
-    // std::cout << "DeltaT: " << DeltaT << std::endl;
     glBegin(GL_LINE_STRIP);
     
     while(t<1.0)
     {
         P = Calcula(t);
-        //P.imprime("P: ");
         glVertex2f(P.x, P.y);
         t += DeltaT;
     }

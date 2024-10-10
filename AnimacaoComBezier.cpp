@@ -43,13 +43,16 @@
 #include "Temporizador.h"
 #include "ListaDeCoresRGB.h"
 
-void AssociaPersonagemComCurva(int p, int c);
+#define N_INIMIGOS 10
+
+// Protótipos de novas funções
 void EncontraProxCurva(int i, int direcao);
 bool operator<(Bezier a, Bezier b);
 int IndexCurvaDoPonto();
 void MudaCurvaDireita();
 void MudaCurvaEsquerda();
 
+// struct de pontos de intersecção
 typedef struct Intersec
 {
     Ponto ponto;
@@ -62,18 +65,20 @@ typedef struct Intersec
     
 } Intersec;
 
+// Variáveis adicionadas
+bool personagem_parado = false;
 bool game_over = false;
-float dash_countdown_max = 150;
+float dash_countdown_max = 100;
 float dash_countdown = dash_countdown_max;
+float tempo_antigo {};
+float tempo {};
+float diferenca_tempo {};
 
 Temporizador T;
 double AccumDeltaT = 0;
 Temporizador T2;
 
-float tempo_antigo {};
-float tempo {};
-float diferenca_tempo {};
-
+// Arrays agora são arraylists
 std::vector<InstanciaBZ> personagens;
 std::vector<Bezier> curvas;
 std::vector<Intersec> pontosIntersec;
@@ -98,8 +103,6 @@ void animate()
     double dt;
     dt = T.getDeltaT();
     AccumDeltaT += dt;
-    TempoTotal += dt;
-    nFrames++;
 
     if (AccumDeltaT > 1.0 / 30) // fixa a atualiza��o da tela em 30
     {
@@ -107,30 +110,24 @@ void animate()
         angulo += 2;
         glutPostRedisplay();
     }
-    if (TempoTotal > 5.0)
-    {
-        std::cout << "Tempo Acumulado: " << TempoTotal << " segundos. ";
-        std::cout << "Nros de Frames sem desenho: " << nFrames << std::endl;
-        std::cout << "FPS(sem desenho): " << nFrames / TempoTotal << std::endl;
-        TempoTotal = 0;
-        nFrames = 0;
-    }
     
+    // Nova lógica de delta_tempo (dt não parece funcionar no Linux)
     tempo = (float)glutGet(GLUT_ELAPSED_TIME);
     diferenca_tempo = (tempo - tempo_antigo);
     tempo_antigo = tempo;
 
+    // Lógica Dash
     if (personagens[0].dash)
     {
         if (dash_countdown <= 0)
         {
             personagens[0].dash = false;
-            personagens[0].velocidade = 2;
+            personagens[0].velocidade = 1;
         }
         else
         {
             dash_countdown -= 0.1*diferenca_tempo;
-            personagens[0].velocidade = 25;
+            personagens[0].velocidade = 40;
         }        
     }
     else
@@ -138,10 +135,14 @@ void animate()
         if (dash_countdown >= dash_countdown_max)
         {
             dash_countdown = dash_countdown_max;
+            if (personagens[0].velocidade < 3 && !personagem_parado)
+            {
+                personagens[0].velocidade = 3;
+            }
         }
         else
         {
-            dash_countdown += 0.05*diferenca_tempo;
+            dash_countdown += 0.02*diferenca_tempo;
         }
     }
 
@@ -168,7 +169,7 @@ void animate()
         // Logica de colisão (mesma curva)
         if ((i != 0) && (personagens[0].n_curva == personagens[i].n_curva))
         {
-            if (calculaDistancia(personagens[0].posicao, personagens[i].posicao) < 0.5)
+            if (calculaDistancia(personagens[0].posicao, personagens[i].posicao) < 1)
             {
                 if (personagens[0].dash)
                 {
@@ -177,7 +178,6 @@ void animate()
                 else
                 {
                     personagens[0].vivo = false;
-                    // std::cout << "GAME OVER" << std::endl;
                     game_over = true;
                 }                
             }
@@ -204,6 +204,7 @@ void reshape(int w, int h)
 // **********************************************************************
 // **********************************************************************
 
+// Desenha player
 void DesenhaPersonagem() //
 {
     player.desenhaPoligono();
@@ -212,6 +213,7 @@ void DesenhaPersonagem() //
 // **********************************************************************
 // void DesenhaTriangulo()
 // **********************************************************************
+// Desenha inimigos
 void DesenhaTriangulo()
 {
     glBegin(GL_LINE_LOOP);
@@ -233,25 +235,29 @@ void CriaInstancias()
     int cor {};
     Ponto ponto_curva {};
 
+    // Instância Player
     ponto_curva = pontosIntersec[n_ponto].ponto;
     n_curva = pontosIntersec[n_ponto].curvas[rand() % pontosIntersec[n_ponto].curvas.size()];
     direcao = (pontosIntersec[curvas[n_curva].pontoInicial].ponto == ponto_curva)? 1 : -1;
-    cor = YellowGreen;
-
+    cor = BrightGold;
     personagens.emplace_back(curvas[n_curva], n_curva, direcao, cor);
     personagens[0].modelo = DesenhaPersonagem;
-    for (size_t i = 1; i <= 11; i++)
+    personagens[0].escala = Ponto(1.3, 1.3, 1.3);
+
+    // Instâncias de Inimigos
+    for (size_t i = 1; i <= N_INIMIGOS; i++)
     {
         n_ponto = (rand() % (pontosIntersec.size()-4)+4);
         ponto_curva = pontosIntersec[n_ponto].ponto;
         n_curva = pontosIntersec[n_ponto].curvas[rand() % pontosIntersec[n_ponto].curvas.size()];
         direcao = (pontosIntersec[curvas[n_curva].pontoInicial].ponto == ponto_curva)? 1 : -1;
         
+        // Encontra cores que não são do cenário ou player
         do
         {
             cor = rand() % 94;
         }
-        while (cor == CadetBlue || cor == YellowGreen || cor == OrangeRed, cor == White);
+        while (cor == SteelBlue || cor == SkyBlue || cor == YellowGreen || cor == BrightGold || cor == Brass || cor == White);
 
         personagens.emplace_back(curvas[n_curva], n_curva, direcao, cor);
         personagens[i].modelo = DesenhaTriangulo;
@@ -269,7 +275,6 @@ void CarregaModelos()
 // **********************************************************************
 void Criacurvas()
 {
-
     std::ifstream input;
     size_t qtdPontosControle;
     size_t qtdcurvas;
@@ -280,6 +285,7 @@ void Criacurvas()
     input.open("PontosDeControle.txt", std::ios::in);
     if (!input)
     {
+        std::cout << "Erro ao abrir PontosDeControle.txt" << std::endl;
         exit(0);
     }
     
@@ -301,6 +307,7 @@ void Criacurvas()
     input.open("PontosCurvas.txt", std::ios::in);
     if (!input)
     {
+        std::cout << "Erro ao abrir PontosCurvas.txt" << std::endl;
         exit(0);
     }
     
@@ -363,7 +370,7 @@ void Criacurvas()
         }
     }
 
-    // Ordena as curvas pelo seu ângulo
+    // Ordena as curvas pelo ângulo do seu vetor inicial
     for (size_t i = 0; i < pontosIntersec.size(); i++)
     {
         sort(pontosIntersec[i].curvas.begin(), pontosIntersec[i].curvas.end());
@@ -372,7 +379,6 @@ void Criacurvas()
     // Adiciona número dos pontos de intersecções às curvas
     for (size_t i = 0; i < pontosIntersec.size(); i++)
     {
-        // pontosIntersec[i].ponto.imprime();
         for (size_t j = 0; j < pontosIntersec[i].curvas.size(); j++)
         {
             int n_curva = pontosIntersec[i].curvas[j];
@@ -385,7 +391,6 @@ void Criacurvas()
                 curvas[n_curva].pontoFinal = i;
             }
         }
-        // std::cout << std::endl;
     }
 }
 
@@ -416,6 +421,7 @@ void init()
 // **********************************************************************
 void DesenhaPersonagens(float tempoDecorrido)
 {
+    // Desenha personagens que estiverem "vivos"
     for (int i = 0; i < personagens.size(); i++)
     {
         if (!personagens[i].vivo)
@@ -444,17 +450,21 @@ void DesenhaPersonagens(float tempoDecorrido)
 // **********************************************************************
 void DesenhaCurvas()
 {
-    defineCor(CadetBlue);
+    defineCor(SteelBlue);
     glLineWidth(3);
     for (int i = 0; i < curvas.size(); i++)
     {
         curvas[i].Traca();
     }
-    defineCor(OrangeRed);
+    // Desenha curvas ligadas ao player
     glLineWidth(4);
+    defineCor(SkyBlue);
+    curvas[personagens[0].n_curva].Traca();
+    defineCor(Brass);
     curvas[personagens[0].prox_curva].Traca();
 }
 
+// Desenha intersecções das curvas
 void DesenhaCruzamentos()
 {
     glEnable (GL_POINT_SMOOTH);
@@ -469,6 +479,7 @@ void DesenhaCruzamentos()
     glEnd();
 }
 
+// Desenha textos na tela
 void DesenhaTextos()
 {
     if (game_over)
@@ -482,12 +493,12 @@ void DesenhaTextos()
         }
     }
 
-    std::string dash_text = "DASH: " + std::to_string((int)dash_countdown);
+    std::string dash_text = "DASH: " + std::to_string((int)dash_countdown) + "%";
     defineCor(White);
-    glRasterPos2f(9, -14);
+    glRasterPos2f(10, -14);
     for(char& c : dash_text)
     {
-        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, c);
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
     }
 }
 
@@ -529,23 +540,6 @@ void display(void)
 //      conta um certo n�mero de segundos e informa quanto frames
 // se passaram neste per�odo.
 // **********************************************************************
-void ContaTempo(double tempo)
-{
-    Temporizador T;
-
-    unsigned long cont = 0;
-    std::cout << "Inicio contagem de " << tempo << "segundos ..." << std::flush;
-    while (true)
-    {
-        tempo -= T.getDeltaT();
-        cont++;
-        if (tempo <= 0.0)
-        {
-            std::cout << "fim! - Passaram-se " << cont << " frames." << std::endl;
-            break;
-        }
-    }
-}
 
 // **********************************************************************
 //  void keyboard ( unsigned char key, int x, int y )
@@ -557,22 +551,37 @@ void keyboard(unsigned char key, int x, int y)
     case 27:     // Termina o programa qdo
         exit(0); // a tecla ESC for pressionada
         break;
+
+    // Espaço, para o personagem
     case 32:
         if (personagens[0].velocidade > 0)
         {
+            personagem_parado = true;
             personagens[0].velocidade = 0;
         }
         else
         {
-            personagens[0].velocidade = 2;
+            personagem_parado = false;
+            if (dash_countdown < dash_countdown_max)
+            {
+                personagens[0].velocidade = 1;
+            }
+            else
+            {
+                personagens[0].velocidade = 3;
+            }            
         }
         break;
-    // case 'r':
-    // {
-    //     init();
-    //     break;
-    // }
-    
+
+    // R, Reinicia o jogo
+    case 'r':
+        game_over = false;
+        dash_countdown = dash_countdown_max;
+        personagens.clear();
+        curvas.clear();
+        pontosIntersec.clear();
+        init();
+        break;    
     default:
         break;
     }
@@ -605,11 +614,16 @@ void arrow_keys(int a_keys, int x, int y)
     }
 }
 
+// Lógica para encontrar próxima curva
 void EncontraProxCurva(int i, int direcao)
 {
+    // Encontra as próximas curvas pelo ponto de intersecção ao final
+    // (ou início, dependendo da direção) da curva em que o personagem está
     int temp {};
     int i_ponto = (personagens[i].direcao == 1)? personagens[i].curva.pontoFinal : personagens[i].curva.pontoInicial;
     int i_curva = rand() % (pontosIntersec[i_ponto].curvas.size());
+
+    // Sorteia curva com rand(), desde que não seja a mesma que o player já está
     while((temp = pontosIntersec[i_ponto].curvas[i_curva]) == personagens[i].n_curva)
     {
         i_curva = rand() % (pontosIntersec[i_ponto].curvas.size());
@@ -619,17 +633,19 @@ void EncontraProxCurva(int i, int direcao)
     personagens[i].prox_ponto = i_ponto;
 }
 
+// Encontra index da curva pelo próximo ponto de intersecção
 int IndexCurvaDoPonto()
 {
-        int prox_curva = personagens[0].prox_curva;
-        int i_ponto = personagens[0].prox_ponto;
-        return std::find(pontosIntersec[i_ponto].curvas.begin(), pontosIntersec[i_ponto].curvas.end(), prox_curva) - pontosIntersec[i_ponto].curvas.begin();
+    int prox_curva = personagens[0].prox_curva;
+    int i_ponto = personagens[0].prox_ponto;
+    return std::find(pontosIntersec[i_ponto].curvas.begin(), pontosIntersec[i_ponto].curvas.end(), prox_curva) - pontosIntersec[i_ponto].curvas.begin();
 }
 
 void MudaCurvaDireita()
 {
     int i_curva = IndexCurvaDoPonto();
     
+    // Lógica para andar pela array de curvas, sem que caia fora da array ou seja do player
     while (true)
     {
         i_curva++;
@@ -666,6 +682,7 @@ void MudaCurvaEsquerda()
     }
 }
 
+// Lógica de comparação de curvas por direção do vetor para ordenação no arraylist
 bool operator<(Bezier a, Bezier b)
 {
     Ponto p_a;
@@ -711,7 +728,7 @@ bool operator<(Bezier a, Bezier b)
 // **********************************************************************
 int main(int argc, char **argv)
 {
-    std::cout << "Programa OpenGL" << std::endl;
+    // std::cout << "Programa OpenGL" << std::endl;
 
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGB);

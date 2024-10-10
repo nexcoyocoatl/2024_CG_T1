@@ -57,7 +57,7 @@ InstanciaBZ::InstanciaBZ()
     vivo = true;
     dash = false;
 
-    velocidade = 2;
+    velocidade = 3;
 }
 InstanciaBZ::InstanciaBZ(Bezier _curva)
 {
@@ -75,9 +75,10 @@ InstanciaBZ::InstanciaBZ(Bezier _curva)
     vivo = true;
     dash = false;
 
-    velocidade = 2;
+    velocidade = 3;
 }
 
+// Novo construtor
 InstanciaBZ::InstanciaBZ(Bezier _curva, int _n_curva, int _direcao, int _cor)
 {
     rotacao = 0;
@@ -97,24 +98,28 @@ InstanciaBZ::InstanciaBZ(Bezier _curva, int _n_curva, int _direcao, int _cor)
     direcao = _direcao;
     t_atual = ((direcao == 1)?0:1); // t_atual depende de onde está na curva
 
-    velocidade = 2;
+    velocidade = 3;
 }
 
+// Avalia curva pelo ponto de entrada do personagem
 void InstanciaBZ::CalculaNovaCurva(Bezier nova_curva)
 {
     Ponto p_final_curva = curva.getPC(((direcao == 1)? 2 : 0));
     Ponto p_curva_nova_1 = nova_curva.getPC(0);
 
+    // Avalia direção e ponto de entrada na curva (inicial ou final) para calcular o deslocamento
     direcao = (p_final_curva == p_curva_nova_1)? 1 : -1;
     t_atual = (direcao == 1)? 0.0 : 1.0;
     posicao = (direcao == 1)? p_curva_nova_1 : nova_curva.getPC(2);
 
+    // Associa personagem a curva e reseta o index da próxima curva para que possa ser encontrado no main()
     curva = nova_curva;
     n_curva = prox_curva;
     prox_curva = -1;
     prox_ponto = -1;
 }
 
+// Muda sentido do personagem em uma curva
 void InstanciaBZ::MudaDirecao()
 {
     direcao *= -1;
@@ -151,14 +156,18 @@ Ponto InstanciaBZ::ObtemPosicao()
     glPopMatrix();
     return PosicaoDoPersonagem;
 }
+
 void InstanciaBZ::AtualizaPosicao(float tempoDecorrido)
 {
+    // Calcula t partindo de 0 ou 1, dependendo da direção
+    // para então ir somando com o delta de tempo e encontrando a posição exata
     t_atual += curva.CalculaT(velocidade*tempoDecorrido) * ((direcao ==1)?1:-1);
     posicao = curva.Calcula(t_atual);
 
     // Logica de Rotacao
+    // Traça um vetor em um ponto bem próximo para encontrar a tangente da posição na curva
+    // Transforma a matriz do vetor em um ângulo em 180 graus (positivo ou negativo) através do cálculo da tangente
     Ponto posicao2 = curva.Calcula(t_atual +(0.01 * ((direcao ==1)?1:-1)));
-    Ponto vetor = posicao2 - posicao;
-    
+    Ponto vetor = posicao2 - posicao;    
     rotacao = (atan2(vetor.y, vetor.x)*180/M_PI) + ROTATION_OFFSET;
 }

@@ -121,6 +121,8 @@ bool operator==(Ponto P1, Ponto P2)
     if (P1.z != P2.z) return false;
     return true;
 }
+
+// Operador not equal
 bool operator!=(Ponto P1, Ponto P2)
 {
     return !(operator==(P1, P2));

@@ -30,7 +30,6 @@
 class Bezier
 {
     Ponto Coords[3];
-    //int Indices[3];
 
 public:
     float ComprimentoTotalDaCurva;

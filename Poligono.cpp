@@ -98,9 +98,7 @@ void Poligono::LePoligono(const char *nome)
         std::cout << "Erro ao abrir " << nome << ". " << std::endl;
         exit(0);
     }
-    std::cout << "Lendo arquivo " << nome << "...";
     std::string S;
-    //int nLinha = 0;
     unsigned int qtdVertices;
     
     input >> qtdVertices;  // arq << qtdVertices
@@ -115,7 +113,6 @@ void Poligono::LePoligono(const char *nome)
         //nLinha++;
         insereVertice(Ponto(x,y));
     }
-    std::cout << "Poligono lido com sucesso!" << std::endl;
 
 }
 
