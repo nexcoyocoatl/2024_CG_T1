@@ -407,7 +407,6 @@ void Criacurvas()
 // **********************************************************************
 void init()
 {
-    srand(time(NULL));
     // Define a cor do fundo da tela
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -750,6 +749,7 @@ bool operator<(Bezier a, Bezier b)
 int main(int argc, char **argv)
 {
     // std::cout << "Programa OpenGL" << std::endl;
+    srand(time(NULL));
 
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGB);
