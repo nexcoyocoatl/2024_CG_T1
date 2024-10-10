@@ -79,7 +79,7 @@ double AccumDeltaT = 0;
 Temporizador T2;
 
 // Arrays agora são arraylists
-std::vector<InstanciaBZ> personagens;
+std::vector<InstanciaBZ*> personagens;
 std::vector<Bezier> curvas;
 std::vector<Intersec> pontosIntersec;
 
@@ -117,17 +117,17 @@ void animate()
     tempo_antigo = tempo;
 
     // Lógica Dash
-    if (personagens[0].dash)
+    if (personagens[0]->dash)
     {
         if (dash_countdown <= 0)
         {
-            personagens[0].dash = false;
-            personagens[0].velocidade = 1;
+            personagens[0]->dash = false;
+            personagens[0]->velocidade = 1;
         }
         else
         {
             dash_countdown -= 0.1*diferenca_tempo;
-            personagens[0].velocidade = 40;
+            personagens[0]->velocidade = 40;
         }        
     }
     else
@@ -135,9 +135,9 @@ void animate()
         if (dash_countdown >= dash_countdown_max)
         {
             dash_countdown = dash_countdown_max;
-            if (personagens[0].velocidade < 3 && !personagem_parado)
+            if (personagens[0]->velocidade < 3 && !personagem_parado)
             {
-                personagens[0].velocidade = 3;
+                personagens[0]->velocidade = 3;
             }
         }
         else
@@ -156,35 +156,35 @@ void animate()
     // Logica Personagens
     for (int i = 0; i < personagens.size(); i++)
     {
-        if (!personagens[i].vivo)
+        if (!personagens[i]->vivo)
         {
             continue;
         }
         // Encontra nova curva no próximo ponto
-        if (personagens[i].prox_curva == -1)
+        if (personagens[i]->prox_curva == -1)
         {
-            EncontraProxCurva(i, personagens[i].direcao);
+            EncontraProxCurva(i, personagens[i]->direcao);
         }
 
         // Calcula troca para nova curva após sair de uma
-        if ((personagens[i].t_atual > 1 && personagens[i].direcao == 1)
-            || (personagens[i].t_atual < 0 && personagens[i].direcao == -1))
+        if ((personagens[i]->t_atual > 1 && personagens[i]->direcao == 1)
+            || (personagens[i]->t_atual < 0 && personagens[i]->direcao == -1))
         {
-            personagens[i].CalculaNovaCurva(curvas[personagens[i].prox_curva]);
+            personagens[i]->CalculaNovaCurva(curvas[personagens[i]->prox_curva]);
         }
 
         // Logica de colisão (mesma curva)
-        if ((i != 0) && (personagens[0].n_curva == personagens[i].n_curva))
+        if ((i != 0) && (personagens[0]->n_curva == personagens[i]->n_curva))
         {
-            if (calculaDistancia(personagens[0].posicao, personagens[i].posicao) < 1)
+            if (calculaDistancia(personagens[0]->posicao, personagens[i]->posicao) < 1)
             {
-                if (personagens[0].dash)
+                if (personagens[0]->dash)
                 {
-                    personagens[i].vivo = false;
+                    personagens[i]->vivo = false;
                 }
                 else
                 {
-                    personagens[0].vivo = false;
+                    personagens[0]->vivo = false;
                     game_over = true;
                 }                
             }
@@ -247,9 +247,10 @@ void CriaInstancias()
     n_curva = pontosIntersec[n_ponto].curvas[rand() % pontosIntersec[n_ponto].curvas.size()];
     direcao = (pontosIntersec[curvas[n_curva].pontoInicial].ponto == ponto_curva)? 1 : -1;
     cor = BrightGold;
-    personagens.emplace_back(curvas[n_curva], n_curva, direcao, cor);
-    personagens[0].modelo = DesenhaPersonagem;
-    personagens[0].escala = Ponto(1.3, 1.3, 1.3);
+
+    personagens.emplace_back(new InstanciaBZ(curvas[n_curva], n_curva, direcao, cor));
+    personagens[0]->modelo = DesenhaPersonagem;
+    personagens[0]->escala = Ponto(1.3, 1.3, 1.3);
 
     // Instâncias de Inimigos
     for (size_t i = 1; i <= N_INIMIGOS; i++)
@@ -266,8 +267,8 @@ void CriaInstancias()
         }
         while (cor == SteelBlue || cor == SkyBlue || cor == YellowGreen || cor == BrightGold || cor == Brass || cor == White);
 
-        personagens.emplace_back(curvas[n_curva], n_curva, direcao, cor);
-        personagens[i].modelo = DesenhaTriangulo;
+        personagens.emplace_back(new InstanciaBZ(curvas[n_curva], n_curva, direcao, cor));
+        personagens[i]->modelo = DesenhaTriangulo;
     }
 }
 // **********************************************************************
@@ -431,23 +432,23 @@ void DesenhaPersonagens(float tempoDecorrido)
     // Desenha personagens que estiverem "vivos"
     for (int i = 0; i < personagens.size(); i++)
     {
-        if (!personagens[i].vivo)
+        if (!personagens[i]->vivo)
         {
             continue;
         }
-        if (personagens[i].dash)
+        if (personagens[i]->dash)
         {
             defineCor(White);
-            personagens[i].escala = Ponto(1.3,1.3,1.3);
+            personagens[i]->escala = Ponto(1.3,1.3,1.3);
         }
         else
         {
-            defineCor(personagens[i].cor);
-            personagens[i].escala = Ponto(1,1,1);
+            defineCor(personagens[i]->cor);
+            personagens[i]->escala = Ponto(1,1,1);
         }
 
-        personagens[i].AtualizaPosicao(tempoDecorrido);
-        personagens[i].desenha();
+        personagens[i]->AtualizaPosicao(tempoDecorrido);
+        personagens[i]->desenha();
     }
 }
 
@@ -466,9 +467,9 @@ void DesenhaCurvas()
     // Desenha curvas ligadas ao player
     glLineWidth(4);
     defineCor(SkyBlue);
-    curvas[personagens[0].n_curva].Traca();
+    curvas[personagens[0]->n_curva].Traca();
     defineCor(Brass);
-    curvas[personagens[0].prox_curva].Traca();
+    curvas[personagens[0]->prox_curva].Traca();
 }
 
 // Desenha intersecções das curvas
@@ -561,21 +562,21 @@ void keyboard(unsigned char key, int x, int y)
 
     // Espaço, para o personagem
     case 32:
-        if (personagens[0].velocidade > 0)
+        if (personagens[0]->velocidade > 0)
         {
             personagem_parado = true;
-            personagens[0].velocidade = 0;
+            personagens[0]->velocidade = 0;
         }
         else
         {
             personagem_parado = false;
             if (dash_countdown < dash_countdown_max)
             {
-                personagens[0].velocidade = 1;
+                personagens[0]->velocidade = 1;
             }
             else
             {
-                personagens[0].velocidade = 3;
+                personagens[0]->velocidade = 3;
             }            
         }
         break;
@@ -585,6 +586,10 @@ void keyboard(unsigned char key, int x, int y)
         game_over = false;
         dash_countdown = dash_countdown_max;
         personagem_parado = false;
+        for (size_t i = 0; i < personagens.size(); i++)
+        {
+            free(personagens[i]);
+        }        
         personagens.clear();
         curvas.clear();
         pontosIntersec.clear();
@@ -612,11 +617,11 @@ void arrow_keys(int a_keys, int x, int y)
         if (dash_countdown >= dash_countdown_max)
         {
             personagem_parado = false;
-            personagens[0].dash = true;
+            personagens[0]->dash = true;
         }
         break;
     case GLUT_KEY_DOWN:
-        personagens[0].MudaDirecao();
+        personagens[0]->MudaDirecao();
         break;
     default:
         break;
@@ -629,24 +634,24 @@ void EncontraProxCurva(int i, int direcao)
     // Encontra as próximas curvas pelo ponto de intersecção ao final
     // (ou início, dependendo da direção) da curva em que o personagem está
     int temp {};
-    int i_ponto = (personagens[i].direcao == 1)? personagens[i].curva.pontoFinal : personagens[i].curva.pontoInicial;
+    int i_ponto = (personagens[i]->direcao == 1)? personagens[i]->curva.pontoFinal : personagens[i]->curva.pontoInicial;
     int i_curva = rand() % (pontosIntersec[i_ponto].curvas.size());
 
     // Sorteia curva com rand(), desde que não seja a mesma que o player já está
-    while((temp = pontosIntersec[i_ponto].curvas[i_curva]) == personagens[i].n_curva)
+    while((temp = pontosIntersec[i_ponto].curvas[i_curva]) == personagens[i]->n_curva)
     {
         i_curva = rand() % (pontosIntersec[i_ponto].curvas.size());
     };
 
-    personagens[i].prox_curva = temp;
-    personagens[i].prox_ponto = i_ponto;
+    personagens[i]->prox_curva = temp;
+    personagens[i]->prox_ponto = i_ponto;
 }
 
 // Encontra index da curva pelo próximo ponto de intersecção
 int IndexCurvaDoPonto()
 {
-    int prox_curva = personagens[0].prox_curva;
-    int i_ponto = personagens[0].prox_ponto;
+    int prox_curva = personagens[0]->prox_curva;
+    int i_ponto = personagens[0]->prox_ponto;
     return std::find(pontosIntersec[i_ponto].curvas.begin(), pontosIntersec[i_ponto].curvas.end(), prox_curva) - pontosIntersec[i_ponto].curvas.begin();
 }
 
@@ -658,15 +663,15 @@ void MudaCurvaDireita()
     while (true)
     {
         i_curva++;
-        if (i_curva > pontosIntersec[personagens[0].prox_ponto].curvas.size()-1)
+        if (i_curva > pontosIntersec[personagens[0]->prox_ponto].curvas.size()-1)
         {
             i_curva = 0;
         }
-        if (pontosIntersec[personagens[0].prox_ponto].curvas[i_curva] == personagens[0].n_curva)
+        if (pontosIntersec[personagens[0]->prox_ponto].curvas[i_curva] == personagens[0]->n_curva)
         {
             continue;
         }
-        personagens[0].prox_curva = pontosIntersec[personagens[0].prox_ponto].curvas[i_curva];
+        personagens[0]->prox_curva = pontosIntersec[personagens[0]->prox_ponto].curvas[i_curva];
         break;
     }
     
@@ -680,13 +685,13 @@ void MudaCurvaEsquerda()
         i_curva--;
         if (i_curva < 0)
         {
-            i_curva = pontosIntersec[personagens[0].prox_ponto].curvas.size()-1;
+            i_curva = pontosIntersec[personagens[0]->prox_ponto].curvas.size()-1;
         }
-        if (pontosIntersec[personagens[0].prox_ponto].curvas[i_curva] == personagens[0].n_curva)
+        if (pontosIntersec[personagens[0]->prox_ponto].curvas[i_curva] == personagens[0]->n_curva)
         {
             continue;
         }
-        personagens[0].prox_curva = pontosIntersec[personagens[0].prox_ponto].curvas[i_curva];
+        personagens[0]->prox_curva = pontosIntersec[personagens[0]->prox_ponto].curvas[i_curva];
         break;
     }
 }
