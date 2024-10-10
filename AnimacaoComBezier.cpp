@@ -142,7 +142,14 @@ void animate()
         }
         else
         {
-            dash_countdown += 0.02*diferenca_tempo;
+            if (personagem_parado)
+            {
+                dash_countdown += 0.05*diferenca_tempo;
+            }
+            else
+            {
+                dash_countdown += 0.01*diferenca_tempo;
+            }
         }
     }
 
@@ -577,6 +584,7 @@ void keyboard(unsigned char key, int x, int y)
     case 'r':
         game_over = false;
         dash_countdown = dash_countdown_max;
+        personagem_parado = false;
         personagens.clear();
         curvas.clear();
         pontosIntersec.clear();
@@ -603,6 +611,7 @@ void arrow_keys(int a_keys, int x, int y)
     case GLUT_KEY_UP:
         if (dash_countdown >= dash_countdown_max)
         {
+            personagem_parado = false;
             personagens[0].dash = true;
         }
         break;
